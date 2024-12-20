@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 To run the UI and record the signal:
 ```bash
-.venv/bin/python3 plux.py
+.venv/bin/python3 record_and_visualize.py
 ```
 
 To play the sounds and send triggers:
@@ -29,6 +29,6 @@ For a handy windows shortcut:
 2. Select New > Shortcut
 3. In the location field, enter (replacing ... with your path):
 ```
-%ComSpec% /k "cd C:\Users\...\horse-oddball && .venv\Scripts\python.exe plux.py"
+%ComSpec% /k "cd C:\Users\...\horse-oddball && .venv\Scripts\python.exe record_and_visualize.py"
 ```
 4. Click Next, give the shortcut a name, and click Finish.
