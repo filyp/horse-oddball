@@ -1,6 +1,7 @@
 mne
 ipykernel
 PySide6
+pyqtgraph
 numpy
 edfio
 sounddevice

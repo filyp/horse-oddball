@@ -22,3 +22,13 @@ To play the sounds and send triggers:
 
 To close, just close the UI window. Also when the sounds end, the UI will close by itself.
 EDF recordings will be saved to the `recordings` folder.
+
+# Tip
+For a handy windows shortcut:
+1. Right-click on your desktop
+2. Select New > Shortcut
+3. In the location field, enter (replacing ... with your path):
+```
+%ComSpec% /k "cd C:\Users\...\horse-oddball && .venv\Scripts\python.exe plux.py"
+```
+4. Click Next, give the shortcut a name, and click Finish.
