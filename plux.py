@@ -28,8 +28,8 @@ TCP_PORT = 5005
 
 
 def signal_int_to_volts(signal_int):
-    vcc = 3.3
-    Geeg = 41782  # sensor gain
+    vcc = 3
+    Geeg = 41780  # sensor gain
     return (signal_int / (2**16) - 1 / 2) * vcc / Geeg
 
 
