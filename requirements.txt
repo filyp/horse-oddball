@@ -1,4 +1,3 @@
-plux
 mne
 ipykernel
 PySide6
