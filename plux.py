@@ -1,13 +1,14 @@
-# %%
+#!/usr/bin/env python3
 # pin is 123
+# %%
 import inspect
-import os
 import select
 import socket
 import threading
 import time
 import traceback
 from datetime import datetime
+from pathlib import Path
 
 import mne
 import numpy as np
@@ -44,7 +45,7 @@ class MyDevice(plux.MemoryDev):
     lastSeq = 0
 
     def onRawFrame(self, nSeq, data):
-        global data_buffer
+        global data_buffer, stop
 
         # Try to connect to trigger source
         if not is_socket_connected(trigger_socket):
@@ -57,8 +58,14 @@ class MyDevice(plux.MemoryDev):
         if is_socket_connected(trigger_socket):
             trig_exists = select.select([trigger_socket], [], [], 0)[0]
             if trig_exists:
-                trigger = trigger_socket.recv(1)[0]
-                print(time.time(), f"Received trigger: {trigger}")
+                trigger_bytes = trigger_socket.recv(1)
+                if trigger_bytes:  # after disconnect, select still sees but cant read
+                    trigger = trigger_bytes[0]
+                    print(time.time(), f"Received trigger: {trigger}")
+                else:
+                    print("Trigger socket disconnected")
+                    stop = True
+                    plotter.close()
 
         # Process EEG data as before
         volt_data = [signal_int_to_volts(d) for d in data]
@@ -128,8 +135,9 @@ info = mne.create_info(
 )
 data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
 raw = RawArray(data, info)
-os.makedirs("recordings", exist_ok=True)
-filename = os.path.join("recordings", f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.edf')
+rec_dir = Path("recordings")
+rec_dir.mkdir(parents=True, exist_ok=True)
+filename = rec_dir / f'{datetime.now().strftime("%Y:%m:%d_%H:%M:%S")}.edf'
 mne.export.export_raw(filename, raw)
 print(f"Saved recording to {filename}")
 

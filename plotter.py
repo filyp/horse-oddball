@@ -96,3 +96,8 @@ class RealtimePlotter:
                 # Update FFT plot
                 self.fft_curves[i].setData(fft_freq, fft_magnitude)
 
+    def close(self):
+        # Move cleanup to the main Qt thread using signals/slots
+        QtCore.QMetaObject.invokeMethod(self.timer, "stop", QtCore.Qt.QueuedConnection)
+        QtCore.QMetaObject.invokeMethod(self.win, "close", QtCore.Qt.QueuedConnection)
+        QtCore.QMetaObject.invokeMethod(self.app, "quit", QtCore.Qt.QueuedConnection)

@@ -4,3 +4,4 @@ ipykernel
 PySide6
 numpy
 edfio
+sounddevice
