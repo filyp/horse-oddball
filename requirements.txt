@@ -1,1 +1,4 @@
 plux
+oscilloscope
+mne
+ipykernel
