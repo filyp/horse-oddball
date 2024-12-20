@@ -1,4 +1,5 @@
 plux
-oscilloscope
 mne
 ipykernel
+PySide6
+numpy
