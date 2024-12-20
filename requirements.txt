@@ -3,3 +3,4 @@ mne
 ipykernel
 PySide6
 numpy
+edfio
