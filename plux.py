@@ -4,19 +4,14 @@ import inspect
 import os
 import select
 import socket
-import sys
 import threading
 import time
 import traceback
-from collections import deque
 from datetime import datetime
-from queue import Queue
 
 import mne
 import numpy as np
-import pyqtgraph as pg
 from mne.io import RawArray
-from pyqtgraph.Qt import QtCore
 
 import plux
 from plotter import RealtimePlotter
@@ -51,17 +46,18 @@ class MyDevice(plux.MemoryDev):
     def onRawFrame(self, nSeq, data):
         global data_buffer
 
-        # try to connect to trigger source
+        # Try to connect to trigger source
         if not is_socket_connected(trigger_socket):
             ret_code = trigger_socket.connect_ex((TCP_IP, TCP_PORT))
             if ret_code == 0:
                 print("Connected to trigger source")
 
         # Check if new trigger data is available
+        trigger = 0
         if is_socket_connected(trigger_socket):
             trig_exists = select.select([trigger_socket], [], [], 0)[0]
             if trig_exists:
-                trigger = trigger_socket.recv(1)
+                trigger = trigger_socket.recv(1)[0]
                 print(time.time(), f"Received trigger: {trigger}")
 
         # Process EEG data as before
@@ -69,7 +65,7 @@ class MyDevice(plux.MemoryDev):
         volt_data = volt_data[:num_electrodes]
 
         # Store data for BDF file (only the first num_electrodes channels)
-        data_buffer.append(volt_data)
+        data_buffer.append(volt_data + [trigger])
 
         # Update plotter as before
         plotter.update_data(volt_data)
@@ -125,9 +121,10 @@ plux_thread.join()
 
 # ! save to EDF file
 info = mne.create_info(
-    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)],
+    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)] + ["TRIGGER"],
     sfreq=sample_rate,
-    ch_types=["eeg"] * num_electrodes,
+    # 'stim' is the channel type for triggers
+    ch_types=["eeg"] * num_electrodes + ["stim"],
 )
 data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
 raw = RawArray(data, info)
@@ -136,22 +133,8 @@ filename = os.path.join("recordings", f'{datetime.now().strftime("%Y%m%d_%H%M%S"
 mne.export.export_raw(filename, raw)
 print(f"Saved recording to {filename}")
 
+# ! cleanup
 dev.stop()
 dev.close()
-
-# Add before final print statement
 if is_socket_connected(trigger_socket):
     trigger_socket.close()
-
-# %%
-# trigger_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-# # %%
-# ret_code = trigger_socket.connect_ex((TCP_IP, TCP_PORT))
-# ret_code
-
-# # %%
-# trigger_socket.send(b'')
-
-# # %%
-# is_socket_connected(trigger_socket)
