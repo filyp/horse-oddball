@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Play Sounds
+Comment=Run horse-oddball play sounds script
+Exec=sh -c "cd $HOME/horse-oddball && .venv/bin/python3 play_sounds.py; exec bash"
+Terminal=true
+Categories=Development;

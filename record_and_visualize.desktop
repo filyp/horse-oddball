@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Record and Visualize
+Comment=Run horse-oddball recording script
+Exec=sh -c "cd $HOME/horse-oddball && .venv/bin/python3 record_and_visualize.py; exec bash"
+Terminal=true
+Categories=Development;

@@ -24,7 +24,9 @@ To close, just close the UI window. Also when the sounds end, the UI will close 
 EDF recordings will be saved to the `recordings` folder.
 
 # Tip
-For a handy windows shortcut:
+For a handy shortcut:
+
+## Windows
 1. Right-click on your desktop
 2. Select New > Shortcut
 3. In the location field, enter (replacing ... with your path):
@@ -32,3 +34,17 @@ For a handy windows shortcut:
 %ComSpec% /k "cd C:\Users\...\horse-oddball && .venv\Scripts\python.exe record_and_visualize.py"
 ```
 4. Click Next, give the shortcut a name, and click Finish.
+
+## Linux
+The repository includes desktop shortcut files.
+
+Create symbolic links to them:
+```bash
+ln -s "$(pwd)/record_and_visualize.desktop" ~/Desktop/
+ln -s "$(pwd)/play_sounds.desktop" ~/Desktop/
+```
+
+After creating the shortcuts, make them executable:
+```bash
+chmod +x ~/Desktop/*.desktop
+```
