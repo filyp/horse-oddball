@@ -43,6 +43,7 @@ def is_socket_connected(sock):
 
 class MyDevice(plux.MemoryDev):
     lastSeq = 0
+    sample_counter = 0  # Add counter to track samples
 
     def onRawFrame(self, nSeq, data):
         global data_buffer, stop, events_buffer
@@ -73,11 +74,13 @@ class MyDevice(plux.MemoryDev):
         volt_data = [signal_int_to_volts(d) for d in data]
         volt_data = volt_data[:num_electrodes]
 
-        # Store only EEG data, not triggers
+        # Store all data at 1000Hz
         data_buffer.append(volt_data)
 
-        # Update plotter as before
-        plotter.update_data(volt_data)
+        # Update plotter only every 5th sample (200Hz)
+        if self.sample_counter % 5 == 0:
+            plotter.update_data(volt_data)
+        self.sample_counter += 1
 
         # check for lost frames
         if nSeq - self.lastSeq > 1:
@@ -102,7 +105,7 @@ stop = False
 data_buffer = []
 events_buffer = []  # New buffer for events
 trigger_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-plotter = RealtimePlotter(num_electrodes=num_electrodes, sample_rate=sample_rate)
+plotter = RealtimePlotter(num_electrodes=num_electrodes, sample_rate=sample_rate // 5)
 
 # print("Found devices: ", plux.BaseDev.findDevices())
 dev = MyDevice(mac_address)

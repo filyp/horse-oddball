@@ -10,7 +10,7 @@ fft_max = 0.001
 
 
 class RealtimePlotter:
-    def __init__(self, buffer_size=5000, num_electrodes=3, sample_rate=1000):
+    def __init__(self, buffer_size=1000, num_electrodes=3, sample_rate=200):
         self.num_electrodes = num_electrodes
         self.sample_rate = sample_rate
 
@@ -38,8 +38,6 @@ class RealtimePlotter:
             signal.lfilter_zi(self.b, self.a) for _ in range(num_electrodes)
         ]
 
-        # self.fft_update_counter = 0
-
         # Add filtered data buffers
         self.filtered_buffers = []
         for _ in range(num_electrodes):
@@ -48,6 +46,9 @@ class RealtimePlotter:
                 filtered_buffer.append(0)
             self.filtered_buffers.append(filtered_buffer)
 
+        # Create time array for x-axis
+        self.time_array = np.linspace(-buffer_size/sample_rate, 0, buffer_size)
+
         # Create 3 columns of plots (one for each electrode)
         for i in range(num_electrodes):
             # Time series plot (row 0, column i)
@@ -55,7 +56,7 @@ class RealtimePlotter:
                 row=0, col=i, title=f"Time Series Data - Electrode {i+1}"
             )
             plot.setLabel("left", "Amplitude")
-            plot.setLabel("bottom", "Samples")
+            plot.setLabel("bottom", "Time (s)")
             plot.showGrid(x=True, y=True)
             plot.setYRange(-40e-6, 40e-6)
             self.plots.append(plot)
@@ -103,28 +104,24 @@ class RealtimePlotter:
         for i in range(self.num_electrodes):
             # Update time series plot with filtered data
             filtered_list = list(self.filtered_buffers[i])
-            self.curves[i].setData(filtered_list)
+            self.curves[i].setData(self.time_array, filtered_list)
 
-            # if self.fft_update_counter % 4 == 0:
+            # Update FFT plot
             data_list = list(self.data_buffers[i])
-            # Take every kth sample from the last 1000 samples
-            k = 2
-            recent_data = data_list[-1000::k]
-            if len(recent_data) == 1000 / k:  # Make sure we have enough samples
-                window = np.hanning(len(recent_data))
+            n_samples = 200
+            recent_data = data_list[-n_samples:]
+            if len(recent_data) == n_samples:
+                window = np.hanning(n_samples)
                 windowed_data = recent_data * window
 
                 fft_data = np.fft.rfft(windowed_data)
-                # Adjust frequency calculation for new effective sample rate
-                fft_freq = np.fft.rfftfreq(len(recent_data), d=k / self.sample_rate)
-
+                fft_freq = np.fft.rfftfreq(n_samples, d=1/self.sample_rate)
+                
                 freq_mask = fft_freq <= 60
                 fft_freq = fft_freq[freq_mask]
                 fft_magnitude = np.abs(fft_data)[freq_mask]
 
                 self.fft_curves[i].setData(fft_freq, fft_magnitude)
-
-        # self.fft_update_counter += 1
 
     def close(self):
         # Move cleanup to the main Qt thread using signals/slots
