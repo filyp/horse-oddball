@@ -6,7 +6,6 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 from scipy import signal
 
-
 fft_max = 0.001
 
 
@@ -32,13 +31,15 @@ class RealtimePlotter:
         nyquist = sample_rate / 2
         cutoff = 45  # Hz
         order = 4
-        self.b, self.a = signal.butter(order, cutoff/nyquist, btype='low')
-        
+        self.b, self.a = signal.butter(order, cutoff / nyquist, btype="low")
+
         # Add filter states (one per electrode)
-        self.filter_states = [signal.lfilter_zi(self.b, self.a) for _ in range(num_electrodes)]
+        self.filter_states = [
+            signal.lfilter_zi(self.b, self.a) for _ in range(num_electrodes)
+        ]
 
         # self.fft_update_counter = 0
-        
+
         # Add filtered data buffers
         self.filtered_buffers = []
         for _ in range(num_electrodes):
@@ -82,7 +83,7 @@ class RealtimePlotter:
         # Setup timer for updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(100)
+        self.timer.start(80)
 
         self.win.show()
 
@@ -90,7 +91,7 @@ class RealtimePlotter:
         """Add new data points to the plots"""
         for i, value in enumerate(new_data):
             self.data_buffers[i].append(value)
-            
+
             # Real-time filtering of single sample
             filtered_value, self.filter_states[i] = signal.lfilter(
                 self.b, self.a, [value], zi=self.filter_states[i]
@@ -106,16 +107,17 @@ class RealtimePlotter:
 
             # if self.fft_update_counter % 4 == 0:
             data_list = list(self.data_buffers[i])
-            # Take every 5th sample from the last 1000 samples
-            recent_data = data_list[-1000::2]  # This gives us 200 samples at 200Hz
-            if len(recent_data) == 200:  # Make sure we have enough samples
+            # Take every kth sample from the last 1000 samples
+            k = 2
+            recent_data = data_list[-1000::k]
+            if len(recent_data) == 1000 / k:  # Make sure we have enough samples
                 window = np.hanning(len(recent_data))
                 windowed_data = recent_data * window
 
                 fft_data = np.fft.rfft(windowed_data)
                 # Adjust frequency calculation for new effective sample rate
-                fft_freq = np.fft.rfftfreq(len(recent_data), d=2/self.sample_rate)
-                
+                fft_freq = np.fft.rfftfreq(len(recent_data), d=k / self.sample_rate)
+
                 freq_mask = fft_freq <= 60
                 fft_freq = fft_freq[freq_mask]
                 fft_magnitude = np.abs(fft_data)[freq_mask]
