@@ -45,7 +45,7 @@ class MyDevice(plux.MemoryDev):
     lastSeq = 0
 
     def onRawFrame(self, nSeq, data):
-        global data_buffer, stop
+        global data_buffer, stop, events_buffer
 
         # Try to connect to trigger source
         if not is_socket_connected(trigger_socket):
@@ -62,6 +62,8 @@ class MyDevice(plux.MemoryDev):
                 if trigger_bytes:  # after disconnect, select still sees but cant read
                     trigger = trigger_bytes[0]
                     print(time.time(), f"Received trigger: {trigger}")
+                    # Store event with sample number and trigger value
+                    events_buffer.append([len(data_buffer), 0, trigger])
                 else:
                     print("Trigger socket disconnected")
                     stop = True
@@ -71,8 +73,8 @@ class MyDevice(plux.MemoryDev):
         volt_data = [signal_int_to_volts(d) for d in data]
         volt_data = volt_data[:num_electrodes]
 
-        # Store data for BDF file (only the first num_electrodes channels)
-        data_buffer.append(volt_data + [trigger])
+        # Store only EEG data, not triggers
+        data_buffer.append(volt_data)
 
         # Update plotter as before
         plotter.update_data(volt_data)
@@ -97,7 +99,8 @@ class MyDevice(plux.MemoryDev):
 
 # %%
 stop = False
-data_buffer = []  # Create a buffer to store data before saving
+data_buffer = []
+events_buffer = []  # New buffer for events
 trigger_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 plotter = RealtimePlotter(num_electrodes=num_electrodes, sample_rate=sample_rate)
 
@@ -128,18 +131,58 @@ plux_thread.join()
 
 # ! save to EDF file
 info = mne.create_info(
-    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)] + ["TRIGGER"],
+    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)],
     sfreq=sample_rate,
-    # 'stim' is the channel type for triggers
-    ch_types=["eeg"] * num_electrodes + ["stim"],
+    ch_types=["eeg"] * num_electrodes,
 )
 data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
 raw = RawArray(data, info)
+
+# Add events to the raw object if we have any
+if events_buffer:
+    events = np.array(events_buffer)
+    raw.add_events(events, stim_channel="TRIGGER")
+
+
+# Add this function near the top with other helper functions
+def create_vmrk_file(vmrk_path, events, data_file_name):
+    """Create a BrainVision marker file."""
+    header = f"""Brain Vision Data Exchange Marker File, Version 1.0
+;Exported using MNE-Python
+[Common Infos]
+Codepage=UTF-8
+DataFile={data_file_name}
+
+[Marker Infos]
+; Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,<Size in data points>,<Channel number (0 = marker is related to all channels)>,<Date (YYYYMMDDhhmmssuuuuuu)>
+; Fields are delimited by commas, some fields might be omitted (empty)
+; Type: New Segment, Comment, Extended, Book, Chapter, Event, Response, Time 0"""
+
+    with open(vmrk_path, "w", encoding="utf-8") as f:
+        f.write(header + "\n")
+
+        # Write markers
+        for idx, (sample_num, _, trigger_value) in enumerate(events, 1):
+            marker_line = f"Mk{idx}=Stimulus,S{trigger_value},{sample_num},1,0"
+            f.write(marker_line + "\n")
+
+
+# Modify the saving part
 rec_dir = Path("recordings")
 rec_dir.mkdir(parents=True, exist_ok=True)
-filename = rec_dir / f'{datetime.now().strftime("%Y:%m:%d_%H:%M:%S")}.edf'
-mne.export.export_raw(filename, raw)
-print(f"Saved recording to {filename}")
+timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+base_filename = rec_dir / timestamp
+
+# Save EDF as before
+edf_filename = base_filename.with_suffix(".edf")
+mne.export.export_raw(edf_filename, raw)
+print(f"Saved recording to {edf_filename}")
+
+# Additionally save markers file
+if events_buffer:
+    vmrk_filename = base_filename.with_suffix(".vmrk")
+    create_vmrk_file(vmrk_filename, events_buffer, edf_filename.name)
+    print(f"Saved markers to {vmrk_filename}")
 
 # ! cleanup
 dev.stop()

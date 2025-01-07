@@ -6,6 +6,9 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 
 
+fft_max = 0.001
+
+
 class RealtimePlotter:
     def __init__(self, buffer_size=5000, num_electrodes=3, sample_rate=1000):
         self.num_electrodes = num_electrodes
@@ -43,7 +46,7 @@ class RealtimePlotter:
             fft_plot.setLabel("left", "Magnitude")
             fft_plot.setLabel("bottom", "Frequency (Hz)")
             fft_plot.showGrid(x=True, y=True)
-            fft_plot.setYRange(0, 0.01)
+            fft_plot.setYRange(0, fft_max)
             self.fft_plots.append(fft_plot)
 
             # Initialize data buffer and curves for this electrode
