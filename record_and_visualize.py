@@ -141,7 +141,12 @@ raw = RawArray(data, info)
 # Add events to the raw object if we have any
 if events_buffer:
     events = np.array(events_buffer)
-    raw.add_events(events, stim_channel="TRIGGER")
+    # First add a stim channel
+    stim_info = mne.create_info(['TRIGGER'], raw.info['sfreq'], ['stim'])
+    stim_raw = mne.io.RawArray(np.zeros((1, len(raw.times))), stim_info)
+    raw.add_channels([stim_raw], force_update_info=True)
+    # Now we can add the events
+    raw.add_events(events, stim_channel='TRIGGER')
 
 
 # Add this function near the top with other helper functions
