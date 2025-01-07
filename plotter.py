@@ -67,7 +67,7 @@ class RealtimePlotter:
             )
             fft_plot.setLabel("left", "Magnitude")
             fft_plot.setLabel("bottom", "Frequency (Hz)")
-            fft_plot.showGrid(x=True, y=True)
+            fft_plot.showGrid(x=False, y=False)
             fft_plot.setYRange(0, fft_max)
             self.fft_plots.append(fft_plot)
 
@@ -80,8 +80,16 @@ class RealtimePlotter:
             # Create curves
             self.curves.append(plot.plot(pen="y"))
             self.fft_curves.append(
-                fft_plot.plot(stepMode="center", fillLevel=0, brush=(0,255,255,150))
+                fft_plot.plot(
+                    stepMode=True,
+                    fillLevel=0,
+                    brush=(0,255,255,150),
+                    pen=None  # Remove the contour
+                )
             )
+
+            # Set Y range to start from 0
+            fft_plot.setLimits(yMin=0)   # Ensure 0 stays at bottom
 
         # Setup timer for updates
         self.timer = QtCore.QTimer()
@@ -123,12 +131,13 @@ class RealtimePlotter:
                 fft_freq = fft_freq[freq_mask]
                 fft_magnitude = np.abs(fft_data)[freq_mask]
 
-                # Add small offset to x values to create proper bar widths
+                # Calculate edges for the bars
                 freq_step = fft_freq[1] - fft_freq[0]
+                bar_edges = np.append(fft_freq - freq_step/2, fft_freq[-1] + freq_step/2)  # Add one more edge
+
                 self.fft_curves[i].setData(
-                    x=fft_freq - freq_step/2,
+                    x=bar_edges,
                     y=fft_magnitude,
-                    width=freq_step
                 )
 
     def close(self):
