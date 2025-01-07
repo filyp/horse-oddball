@@ -6,7 +6,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 from scipy import signal
 
-fft_max = 0.001
+fft_max = 0.0005
 
 
 class RealtimePlotter:
@@ -79,7 +79,9 @@ class RealtimePlotter:
 
             # Create curves
             self.curves.append(plot.plot(pen="y"))
-            self.fft_curves.append(fft_plot.plot(pen="c"))
+            self.fft_curves.append(
+                fft_plot.plot(stepMode="center", fillLevel=0, brush=(0,255,255,150))
+            )
 
         # Setup timer for updates
         self.timer = QtCore.QTimer()
@@ -121,7 +123,13 @@ class RealtimePlotter:
                 fft_freq = fft_freq[freq_mask]
                 fft_magnitude = np.abs(fft_data)[freq_mask]
 
-                self.fft_curves[i].setData(fft_freq, fft_magnitude)
+                # Add small offset to x values to create proper bar widths
+                freq_step = fft_freq[1] - fft_freq[0]
+                self.fft_curves[i].setData(
+                    x=fft_freq - freq_step/2,
+                    y=fft_magnitude,
+                    width=freq_step
+                )
 
     def close(self):
         # Move cleanup to the main Qt thread using signals/slots
