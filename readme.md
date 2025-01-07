@@ -38,13 +38,12 @@ For a handy shortcut:
 ## Linux
 The repository includes desktop shortcut files.
 
-Create symbolic links to them:
+Copy them to your desktop:
 ```bash
-ln -s "$(pwd)/record_and_visualize.desktop" ~/Desktop/
-ln -s "$(pwd)/play_sounds.desktop" ~/Desktop/
+cp *.desktop ~/Desktop/
 ```
 
-After creating the shortcuts, make them executable:
+After copying the shortcuts, make them executable:
 ```bash
 chmod +x ~/Desktop/*.desktop
 ```
