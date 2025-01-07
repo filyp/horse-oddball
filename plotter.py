@@ -80,7 +80,7 @@ class RealtimePlotter:
         # Setup timer for updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(50)
+        self.timer.start(100)
 
         self.win.show()
 
@@ -102,22 +102,23 @@ class RealtimePlotter:
             filtered_list = list(self.filtered_buffers[i])
             self.curves[i].setData(filtered_list)
 
-            # Calculate minimum number of points needed for 60Hz resolution
-            n_samples = 1000
-            desired_freq = 60  # Hz
-            n_points = int(n_samples * desired_freq / self.sample_rate) + 1
-
+            # FFT computation uses original unfiltered data
             data_list = list(self.data_buffers[i])
+            n_samples = 1000
             recent_data = data_list[-n_samples:]
             if len(recent_data) == n_samples:
-                # Apply Hanning window
+                # Apply Hanning window to reduce spectral leakage
                 window = np.hanning(n_samples)
                 windowed_data = recent_data * window
 
-                # Compute smaller FFT
-                fft_data = np.fft.rfft(windowed_data, n=n_points*2)  # *2 for better resolution
-                fft_freq = np.fft.rfftfreq(n_points*2, d=1/self.sample_rate)
-                fft_magnitude = np.abs(fft_data)
+                # Compute FFT
+                fft_data = np.fft.rfft(windowed_data)
+                fft_freq = np.fft.rfftfreq(n_samples, d=1 / self.sample_rate)
+
+                # Only plot frequencies up to 60Hz
+                freq_mask = fft_freq <= 60
+                fft_freq = fft_freq[freq_mask]
+                fft_magnitude = np.abs(fft_data)[freq_mask]
 
                 # Update FFT plot
                 self.fft_curves[i].setData(fft_freq, fft_magnitude)
