@@ -6,7 +6,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 from scipy import signal
 
-fft_max = 0.0005
+fft_max = 0.0002
 
 
 class RealtimePlotter:
