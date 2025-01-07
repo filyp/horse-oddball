@@ -6,8 +6,8 @@ odd_probability = 0.2
 beep_duration = 0.5
 inter_beep_duration = 1
 
-normal_freq = 400
-odd_freq = 1130
+normal_freq = 1000
+odd_freq = 1400
 
 NORMAL_TRIG = 100
 ODD_TRIG = 101

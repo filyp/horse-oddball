@@ -4,6 +4,7 @@ from collections import deque
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
+from scipy import signal
 
 
 fft_max = 0.001
@@ -26,6 +27,23 @@ class RealtimePlotter:
         self.curves = []
         self.fft_curves = []
         self.data_buffers = []
+
+        # Design the low-pass filter
+        nyquist = sample_rate / 2
+        cutoff = 45  # Hz
+        order = 4
+        self.b, self.a = signal.butter(order, cutoff/nyquist, btype='low')
+        
+        # Add filter states (one per electrode)
+        self.filter_states = [signal.lfilter_zi(self.b, self.a) for _ in range(num_electrodes)]
+        
+        # Add filtered data buffers
+        self.filtered_buffers = []
+        for _ in range(num_electrodes):
+            filtered_buffer = deque(maxlen=buffer_size)
+            for _ in range(buffer_size):
+                filtered_buffer.append(0)
+            self.filtered_buffers.append(filtered_buffer)
 
         # Create 3 columns of plots (one for each electrode)
         for i in range(num_electrodes):
@@ -68,18 +86,24 @@ class RealtimePlotter:
 
     def update_data(self, new_data):
         """Add new data points to the plots"""
-        # new_data should be a list of 3 values, one for each electrode
         for i, value in enumerate(new_data):
             self.data_buffers[i].append(value)
+            
+            # Real-time filtering of single sample
+            filtered_value, self.filter_states[i] = signal.lfilter(
+                self.b, self.a, [value], zi=self.filter_states[i]
+            )
+            self.filtered_buffers[i].append(filtered_value[0])
 
     def update_plot(self):
         """Update both the time series plots and FFT plots for all electrodes"""
         for i in range(self.num_electrodes):
-            # Update time series plot
-            data_list = list(self.data_buffers[i])
-            self.curves[i].setData(data_list)
+            # Update time series plot with filtered data
+            filtered_list = list(self.filtered_buffers[i])
+            self.curves[i].setData(filtered_list)
 
-            # Compute and update FFT
+            # FFT computation uses original unfiltered data
+            data_list = list(self.data_buffers[i])
             n_samples = 1000
             recent_data = data_list[-n_samples:]
             if len(recent_data) == n_samples:
