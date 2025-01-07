@@ -19,7 +19,7 @@ class RealtimePlotter:
         self.app = pg.mkQApp()
         self.win = pg.GraphicsLayoutWidget()
         self.win.setWindowTitle("Real-time Plot")
-        self.win.resize(1800, 800)  # Increased width to accommodate 3 columns
+        self.win.resize(1500, 750)  # Increased width to accommodate 3 columns
 
         # Create lists to store plots and curves for each electrode
         self.plots = []
@@ -80,7 +80,7 @@ class RealtimePlotter:
         # Setup timer for updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(60)
+        self.timer.start(100)
 
         self.win.show()
 
