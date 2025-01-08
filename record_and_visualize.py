@@ -148,6 +148,10 @@ data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samp
 raw = RawArray(data, info)
 
 # Convert events_buffer to MNE events array format if there are any events
+# turns out, it's the annotations which are needed by BrainVisionAnalyzer, not just events
+# with annotations, added, the vhdr format wound probably even be unneeded - the .edf wound suffice
+# also the TRIGGER channel is probably unnecessary now
+# but let's keep them both for redundancy
 if events_buffer:
     print("Events found:", events_buffer)
     events = np.array(events_buffer, dtype=int)
@@ -163,7 +167,6 @@ if events_buffer:
 
 # Export to BrainVision format
 mne.export.export_raw(base_filename.with_suffix('.vhdr'), raw, fmt='brainvision', overwrite=True)
-
 print(f"Saved recording to {base_filename.with_suffix('.vhdr')}")
 
 # Save EDF as before
