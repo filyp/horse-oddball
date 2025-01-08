@@ -164,6 +164,33 @@ DataFile={data_file_name}
             marker_line = f"Mk{idx}=Stimulus,S{trigger_value},{sample_num},1,0"
             f.write(marker_line + "\n")
 
+# Add this function near create_vmrk_file
+def create_vhdr_file(vhdr_path, data_file_name, num_channels, sample_rate):
+    """Create a BrainVision header file."""
+    header = f"""Brain Vision Data Exchange Header File Version 1.0
+;Written using MNE-Python
+
+[Common Infos]
+Codepage=UTF-8
+DataFile={data_file_name}
+MarkerFile={data_file_name.replace('.dat', '.vmrk')}
+DataFormat=BINARY
+DataOrientation=MULTIPLEXED
+NumberOfChannels={num_channels}
+SamplingInterval={1000000/sample_rate}
+
+[Binary Infos]
+BinaryFormat=IEEE_FLOAT_32
+
+[Channel Infos]"""
+
+    with open(vhdr_path, "w", encoding="utf-8") as f:
+        f.write(header + "\n")
+        # Write channel information
+        for i in range(num_electrodes):
+            f.write(f"Ch{i+1}=EEG{i+1},,1,µV\n")
+        # Add trigger channel
+        f.write(f"Ch{num_electrodes+1}=TRIGGER,,1,µV\n")
 
 # Modify the saving part
 rec_dir = Path("recordings")
@@ -176,10 +203,24 @@ edf_filename = base_filename.with_suffix(".edf")
 mne.export.export_raw(edf_filename, raw)
 print(f"Saved recording to {edf_filename}")
 
-# save markers file
+# Save data in BrainVision format
+dat_filename = base_filename.with_suffix(".dat")
+vhdr_filename = base_filename.with_suffix(".vhdr")
+vmrk_filename = base_filename.with_suffix(".vmrk")
+
+# Save .dat file (binary data)
+data = np.array(data_buffer).T  # channels x samples
+data = data.astype(np.float32)  # Convert to float32
+data.tofile(dat_filename)
+print(f"Saved recording to {dat_filename}")
+
+# Create header file
+create_vhdr_file(vhdr_filename, dat_filename.name, num_electrodes + 1, sample_rate)
+print(f"Saved header to {vhdr_filename}")
+
+# Create marker file
 if events_buffer:
-    vmrk_filename = base_filename.with_suffix(".vmrk")
-    create_vmrk_file(vmrk_filename, events_buffer, edf_filename.name)
+    create_vmrk_file(vmrk_filename, events_buffer, dat_filename.name)
     print(f"Saved markers to {vmrk_filename}")
 
 # ! cleanup
