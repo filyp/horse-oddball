@@ -75,7 +75,7 @@ class MyDevice(plux.MemoryDev):
         volt_data = volt_data[:num_electrodes]
 
         # Store all data at 1000Hz
-        data_buffer.append(volt_data)
+        data_buffer.append(volt_data + [trigger])
 
         # Update plotter only every 5th sample (200Hz)
         if self.sample_counter % 5 == 0:
@@ -134,23 +134,13 @@ plux_thread.join()
 
 # ! save to EDF file
 info = mne.create_info(
-    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)],
+    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)] + ["TRIGGER"],
     sfreq=sample_rate,
-    ch_types=["eeg"] * num_electrodes,
+    # 'stim' is the channel type for triggers
+    ch_types=["eeg"] * num_electrodes + ["stim"],
 )
 data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
 raw = RawArray(data, info)
-
-# Add events to the raw object if we have any
-if events_buffer:
-    events = np.array(events_buffer)
-    # First add a stim channel
-    stim_info = mne.create_info(['TRIGGER'], raw.info['sfreq'], ['stim'])
-    stim_raw = mne.io.RawArray(np.zeros((1, len(raw.times))), stim_info)
-    raw.add_channels([stim_raw], force_update_info=True)
-    # Now we can add the events
-    raw.add_events(events, stim_channel='TRIGGER')
-
 
 # Add this function near the top with other helper functions
 def create_vmrk_file(vmrk_path, events, data_file_name):
@@ -186,7 +176,7 @@ edf_filename = base_filename.with_suffix(".edf")
 mne.export.export_raw(edf_filename, raw)
 print(f"Saved recording to {edf_filename}")
 
-# Additionally save markers file
+# save markers file
 if events_buffer:
     vmrk_filename = base_filename.with_suffix(".vmrk")
     create_vmrk_file(vmrk_filename, events_buffer, edf_filename.name)
