@@ -132,96 +132,44 @@ print("Closing")
 stop = True
 plux_thread.join()
 
-# ! save to EDF file
-info = mne.create_info(
-    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)] + ["TRIGGER"],
-    sfreq=sample_rate,
-    # 'stim' is the channel type for triggers
-    ch_types=["eeg"] * num_electrodes + ["stim"],
-)
-data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
-raw = RawArray(data, info)
-
-# Add this function near the top with other helper functions
-def create_vmrk_file(vmrk_path, events, data_file_name):
-    """Create a BrainVision marker file."""
-    header = f"""Brain Vision Data Exchange Marker File, Version 1.0
-;Exported using MNE-Python
-[Common Infos]
-Codepage=UTF-8
-DataFile={data_file_name}
-
-[Marker Infos]
-; Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,<Size in data points>,<Channel number (0 = marker is related to all channels)>,<Date (YYYYMMDDhhmmssuuuuuu)>
-; Fields are delimited by commas, some fields might be omitted (empty)
-; Type: New Segment, Comment, Extended, Book, Chapter, Event, Response, Time 0"""
-
-    with open(vmrk_path, "w", encoding="utf-8") as f:
-        f.write(header + "\n")
-
-        # Write markers
-        for idx, (sample_num, _, trigger_value) in enumerate(events, 1):
-            marker_line = f"Mk{idx}=Stimulus,S{trigger_value},{sample_num},1,0"
-            f.write(marker_line + "\n")
-
-# Add this function near create_vmrk_file
-def create_vhdr_file(vhdr_path, data_file_name, num_channels, sample_rate):
-    """Create a BrainVision header file."""
-    header = f"""Brain Vision Data Exchange Header File Version 1.0
-;Written using MNE-Python
-
-[Common Infos]
-Codepage=UTF-8
-DataFile={data_file_name}
-MarkerFile={data_file_name.replace('.dat', '.vmrk')}
-DataFormat=BINARY
-DataOrientation=MULTIPLEXED
-NumberOfChannels={num_channels}
-SamplingInterval={1000000/sample_rate}
-
-[Binary Infos]
-BinaryFormat=IEEE_FLOAT_32
-
-[Channel Infos]"""
-
-    with open(vhdr_path, "w", encoding="utf-8") as f:
-        f.write(header + "\n")
-        # Write channel information
-        for i in range(num_electrodes):
-            f.write(f"Ch{i+1}=EEG{i+1},,1,µV\n")
-        # Add trigger channel
-        f.write(f"Ch{num_electrodes+1}=TRIGGER,,1,µV\n")
-
-# Modify the saving part
+# Replace the saving part with:
 rec_dir = Path("recordings")
 rec_dir.mkdir(parents=True, exist_ok=True)
 timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 base_filename = rec_dir / timestamp
 
+# Create MNE Raw object
+info = mne.create_info(
+    ch_names=[f"EEG{i+1}" for i in range(num_electrodes)] + ["TRIGGER"],
+    sfreq=sample_rate,
+    ch_types=["eeg"] * num_electrodes + ["stim"],
+)
+data = np.array(data_buffer).T  # convert buffer to numpy array (channels x samples)
+raw = RawArray(data, info)
+
+# Convert events_buffer to MNE events array format if there are any events
+if events_buffer:
+    print("Events found:", events_buffer)
+    events = np.array(events_buffer, dtype=int)
+    
+    # Create an annotations object from the events
+    onset = events[:, 0] / sample_rate  # Convert sample numbers to seconds
+    duration = np.zeros(len(events))  # Duration of each event (0 for instantaneous)
+    description = [f"Stimulus/S{str(val)}" for val in events[:, 2]]  # BrainVision format
+    
+    # Create and add annotations to the raw object
+    annot = mne.Annotations(onset=onset, duration=duration, description=description)
+    raw.set_annotations(annot)
+
+# Export to BrainVision format
+mne.export.export_raw(base_filename.with_suffix('.vhdr'), raw, fmt='brainvision', overwrite=True)
+
+print(f"Saved recording to {base_filename.with_suffix('.vhdr')}")
+
 # Save EDF as before
 edf_filename = base_filename.with_suffix(".edf")
 mne.export.export_raw(edf_filename, raw)
 print(f"Saved recording to {edf_filename}")
-
-# Save data in BrainVision format
-dat_filename = base_filename.with_suffix(".dat")
-vhdr_filename = base_filename.with_suffix(".vhdr")
-vmrk_filename = base_filename.with_suffix(".vmrk")
-
-# Save .dat file (binary data)
-data = np.array(data_buffer).T  # channels x samples
-data = data.astype(np.float32)  # Convert to float32
-data.tofile(dat_filename)
-print(f"Saved recording to {dat_filename}")
-
-# Create header file
-create_vhdr_file(vhdr_filename, dat_filename.name, num_electrodes + 1, sample_rate)
-print(f"Saved header to {vhdr_filename}")
-
-# Create marker file
-if events_buffer:
-    create_vmrk_file(vmrk_filename, events_buffer, dat_filename.name)
-    print(f"Saved markers to {vmrk_filename}")
 
 # ! cleanup
 dev.stop()

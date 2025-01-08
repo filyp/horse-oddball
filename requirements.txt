@@ -5,3 +5,4 @@ pyqtgraph
 numpy
 edfio
 sounddevice
+pybv
