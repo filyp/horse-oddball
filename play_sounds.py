@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # %% settings
-num_beeps = 10
-odd_probability = 0.2
+num_beeps = 400
+odd_probability = 0.25
 
-beep_duration = 0.5
-inter_beep_duration = 1
+beep_duration = 0.1
+possible_intervals = [1.1, 1.2, 1.3, 1.4]
 
-normal_freq = 1000
-odd_freq = 1400
+normal_freq = 2000
+odd_freq = 4300
 
 NORMAL_TRIG = 100
 ODD_TRIG = 101
@@ -73,8 +73,10 @@ for beep_type in beep_types:
         client_socket.send(bytes([NORMAL_TRIG]))
         play_beep(normal_freq, beep_duration)
         client_socket.send(bytes([NORMAL_TRIG_END]))
-    time.sleep(inter_beep_duration)
 
+    inter_beep_duration = random.choice(possible_intervals)
+    # print(f"{inter_beep_duration=:.2f}s")
+    time.sleep(inter_beep_duration)
 
 # %%
 client_socket.close()
